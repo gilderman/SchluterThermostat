@@ -202,14 +202,20 @@ def getAllDeviceAttributes() {
                 
                 if (data.containsKey("setpointMode")) {
                     def apiMode = data.setpointMode
+                    def previousMode = device.currentValue("thermostatMode")
                     def thermostatMode = mapApiModeToThermostatMode(apiMode)
                     sendEvent(name: "thermostatMode", value: thermostatMode)
                     updateOperatingState()
                     
-                    // Handle auto-off when mode changes from API
-                    if (thermostatMode == "heat" || thermostatMode == "auto") {
+                    // Handle auto-off only when mode actually changes
+                    def wasOn = (previousMode == "heat" || previousMode == "auto")
+                    def isOn = (thermostatMode == "heat" || thermostatMode == "auto")
+                    
+                    if (!wasOn && isOn) {
+                        // Transition from off -> heat/auto: start auto-off timer
                         scheduleAutoOff()
-                    } else if (thermostatMode == "off") {
+                    } else if (wasOn && !isOn) {
+                        // Transition from heat/auto -> off: cancel auto-off timer
                         cancelAutoOff()
                     }
                 }
@@ -312,15 +318,18 @@ def getDeviceAttribute(attributeName) {
                 }
                 else if (attributeName == "setpointMode" && data.containsKey("setpointMode")) {
                     def apiMode = data.setpointMode
-                    def thermostatMode = mapApiModeToThermostatMode(apiMode)
                     def previousMode = device.currentValue("thermostatMode")
+                    def thermostatMode = mapApiModeToThermostatMode(apiMode)
                     sendEvent(name: "thermostatMode", value: thermostatMode)
                     updateOperatingState()
                     
-                    // Handle auto-off when mode changes from API
-                    if (thermostatMode == "heat" || thermostatMode == "auto") {
+                    // Handle auto-off only when mode actually changes
+                    def wasOn = (previousMode == "heat" || previousMode == "auto")
+                    def isOn = (thermostatMode == "heat" || thermostatMode == "auto")
+                    
+                    if (!wasOn && isOn) {
                         scheduleAutoOff()
-                    } else if (thermostatMode == "off") {
+                    } else if (wasOn && !isOn) {
                         cancelAutoOff()
                     }
                 }
